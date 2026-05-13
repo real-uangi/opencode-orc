@@ -6,7 +6,9 @@ A lightweight orchestrator for [opencode](https://github.com/anomalyco/opencode)
 
 ## Why?
 
-opencode supports most AI providers, making it the ideal bridge layer for delegating sub-agents. Other AI CLI tools can call opencode-orc as a subprocess to leverage multi-provider capabilities without direct integration.
+AIs like Claude and Codex often perform best within their official tools, but those tools don't support external model providers. opencode supports external providers, yet it doesn't allow specifying different models for different agents. Projects like oh-my-opencode solve this, but with heavy intrusiveness. opencode-orc sidesteps these issues entirely — it stays lightweight and non-intrusive while unlocking cross-provider agent delegation.
+
+opencode supports most AI providers, making it the ideal bridge layer for delegating sub-agents. **Any AI CLI tool (including opencode itself) can call opencode-orc as a subprocess** to leverage multi-provider capabilities without direct integration. This enables arbitrary-depth agent nesting — an AI agent can spawn another AI agent via opencode-orc, creating powerful "nesting doll" (套娃) orchestration patterns.
 
 opencode outputs verbose JSONL events, consuming significant tokens when parsed by other AI agents. opencode-orc compresses them into concise text summaries, drastically reducing token usage:
 
@@ -26,6 +28,14 @@ go install github.com/real-uangi/opencode-orc@latest
 
 Or download from [Releases](https://github.com/real-uangi/opencode-orc/releases).
 
+### Let Your AI Set It Up for You
+
+Too lazy to read the manual? Copy and paste this to your AI assistant:
+
+> "Please read https://github.com/real-uangi/opencode-orc/blob/main/AGENTS.md and set up opencode-orc for me according to that guide."
+
+Your AI will handle installation, configuration, and skill creation automatically.
+
 ## Usage
 
 ```bash
@@ -38,6 +48,8 @@ opencode-orc "your prompt here"
 |------|---------|-------------|
 | `-config` | `~/.config/opencode-orc/config.yaml` | Path to config file |
 | `-version` | | Show version |
+| `-models` | | List available models |
+| `-model` | | Model to use (`provider/model` format) |
 
 ### Examples
 
@@ -50,6 +62,12 @@ opencode-orc "explain this code" > explanation.txt
 
 # Use custom config
 opencode-orc -config ./my-config.yaml "review this PR"
+
+# List available models
+opencode-orc -models
+
+# Run with a specific model
+opencode-orc -model deepseek/deepseek-chat "explain quantum computing"
 ```
 
 ## Output Formats

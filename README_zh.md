@@ -6,7 +6,9 @@
 
 ## 为什么需要？
 
-opencode 支持绝大部分 AI 提供商，是最适合作为委派子 Agents 的桥接层。其他 AI CLI 工具可以将 opencode-orc 作为子进程调用，无需直接集成即可利用多提供商能力。
+Claude、Codex 等 AI 往往在官方提供的工具中才能发挥最大作用，但这些工具不支持外部的模型供应商。opencode 虽然支持外部供应商，却不支持为不同 Agent 指定不同模型（oh-my-opencode 解决了这个问题，但侵入性太大）。本项目的方案恰好避开了这些痛点——它保持轻量、零侵入，同时解锁了跨供应商的 Agent 委派能力。
+
+opencode 支持绝大部分 AI 提供商，是最适合作为委派子 Agents 的桥接层。**任何 AI CLI 工具（包括 opencode 自身）都可以将 opencode-orc 作为子进程调用**，无需直接集成即可利用多提供商能力。这实现了任意深度的 Agent 嵌套——一个 AI Agent 可以通过 opencode-orc 派生另一个 AI Agent，形成强大的「套娃」编排模式。
 
 opencode 输出冗长的 JSONL 事件，被其他 AI Agent 解析时会消耗大量 token。opencode-orc 将其压缩为简洁的文本摘要，大幅节省 token 开销：
 
@@ -26,6 +28,14 @@ go install github.com/real-uangi/opencode-orc@latest
 
 或从 [Releases](https://github.com/real-uangi/opencode-orc/releases) 下载。
 
+### 让 AI 帮你配置
+
+懒得看文档？把这句话发给你的 AI 助手：
+
+> 「请阅读 https://github.com/real-uangi/opencode-orc/blob/main/AGENTS.md 并按照其中的要求完成配置。」
+
+你的 AI 会自动完成安装、配置和 Skill 创建。
+
 ## 使用
 
 ```bash
@@ -38,6 +48,8 @@ opencode-orc "你的提示词"
 |------|--------|------|
 | `-config` | `~/.config/opencode-orc/config.yaml` | 配置文件路径 |
 | `-version` | | 显示版本 |
+| `-models` | | 列出可用模型 |
+| `-model` | | 指定模型（`provider/model` 格式） |
 
 ### 示例
 
@@ -50,6 +62,12 @@ opencode-orc "解释这段代码" > explanation.txt
 
 # 使用自定义配置
 opencode-orc -config ./my-config.yaml "审查这个 PR"
+
+# 列出可用模型
+opencode-orc -models
+
+# 使用指定模型运行
+opencode-orc -model deepseek/deepseek-chat "解释量子计算"
 ```
 
 ## 输出格式

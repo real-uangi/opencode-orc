@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 
 	"github.com/real-uangi/opencode-orc/buffer"
 	"github.com/real-uangi/opencode-orc/config"
@@ -17,10 +18,20 @@ import (
 func main() {
 	configPath := flag.String("config", config.DefaultConfigPath(), "Path to config file")
 	showVersion := flag.Bool("version", false, "Show version information")
+	listModels := flag.Bool("models", false, "List available models")
+	model := flag.String("model", "", "Model to use (provider/model)")
 	flag.Parse()
 
 	if *showVersion {
 		fmt.Println("opencode-orc version 0.1.0")
+		os.Exit(0)
+	}
+
+	if *listModels {
+		if err := listAvailableModels(); err != nil {
+			output.WriteError("failed to list models: %v", err)
+			os.Exit(1)
+		}
 		os.Exit(0)
 	}
 
@@ -42,6 +53,9 @@ func main() {
 	}
 
 	opencodeArgs := []string{"run", "--format", "json"}
+	if *model != "" {
+		opencodeArgs = append(opencodeArgs, "-m", *model)
+	}
 	opencodeArgs = append(opencodeArgs, args...)
 
 	proc, err := process.New(opencodeArgs)
@@ -97,4 +111,11 @@ func main() {
 	}
 
 	os.Exit(proc.ExitCode())
+}
+
+func listAvailableModels() error {
+	cmd := exec.Command("opencode", "models")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
