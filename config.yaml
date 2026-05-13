@@ -1,0 +1,32 @@
+events:
+  include:
+    - step_start
+    - tool_use
+    - text
+    - step_finish
+    - error
+  rules:
+    step_start:
+      keep:
+        - sessionID
+    tool_use:
+      keep:
+        - part.tool
+        - part.state.status
+        - part.state.input
+        - part.state.error
+        - part.state.metadata.exit
+        - part.title
+    text:
+      keep:
+        - part.text
+    step_finish:
+      keep:
+        - part.reason
+    error:
+      keep:
+        - error.name
+        - error.data.message
+output:
+  format: jsonl
+  pretty: false
