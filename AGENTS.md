@@ -204,6 +204,117 @@ If your AI framework supports skills (e.g., OpenCode, Claude Code, etc.), you ca
    - The sub-agent can itself call opencode-orc to spawn another agent
    - This creates arbitrary-depth agent nesting ("套娃")
 
+## Orchestrator Agent Pattern (Recommended)
+
+When building an orchestrator skill that delegates tasks to sub-agents via opencode-orc, follow this pattern:
+
+### 1. Model Selection
+
+**Before every delegation, ask the user which model to use.**
+
+To present available choices, first run:
+
+```bash
+opencode-orc -models
+```
+
+This outputs a list like:
+
+```
+deepseek/deepseek-chat
+deepseek/deepseek-reasoner
+kimi/kimi-for-coding
+...
+```
+
+Present this list to the user and let them pick. Then pass the selected model via the `-model` flag:
+
+```bash
+opencode-orc -model deepseek/deepseek-reasoner "implement a REST API"
+```
+
+**Never assume a default model.** Different tasks benefit from different models (e.g., reasoning-heavy tasks → reasoning models, coding tasks → coding-optimized models).
+
+### 2. Multi-Round Sessions
+
+opencode supports session continuity via the `-s` flag. Use this to continue working with the same sub-agent across multiple rounds.
+
+**First delegation** (captures session ID from output):
+
+```bash
+opencode-orc -model deepseek/deepseek-chat "implement feature X"
+# Output contains: [session] ses_abc123
+```
+
+**Continue the same session** (e.g., after reviewing the sub-agent's work):
+
+```bash
+opencode-orc -model deepseek/deepseek-chat -s ses_abc123 "refactor the error handling as discussed"
+```
+
+**Key rules:**
+- Always extract the `sessionID` from the `[session]` line in the output
+- When continuing, reuse the same `sessionID` with `-s`
+- When continuing, you may change the model via `-model` (opencode will handle model switching within the same session)
+
+### 3. Orchestrator-Only Principle
+
+**The orchestrator must NEVER directly modify code, files, or execute commands on the user's project.**
+
+Its sole responsibilities are:
+- **Understand** the user's high-level goal
+- **Decompose** the goal into specific sub-tasks
+- **Delegate** each sub-task to a dedicated sub-agent via `opencode-orc`
+- **Wait** for the sub-agent to complete
+- **Evaluate** the sub-agent's output against the original requirements
+- **Iterate** if the output does not meet requirements (continue the session with `-s`)
+
+### 4. Acceptance & Iteration Workflow
+
+After a sub-agent completes a task, the orchestrator must perform acceptance review:
+
+1. **Parse** the sub-agent's final output (look for `[done]` event)
+2. **Evaluate** whether the result satisfies the original task requirements
+3. **If accepted**: Report success to the user
+4. **If rejected**: Continue the same session with corrective instructions:
+
+   ```bash
+   opencode-orc -model deepseek/deepseek-chat -s ses_abc123 "The implementation is missing input validation. Add validation for null values and string length limits."
+   ```
+
+5. **Repeat** steps 2-4 until the task is satisfactorily completed
+
+**Example acceptance criteria:**
+- Does the code compile and pass tests?
+- Does it implement all specified requirements?
+- Is the code quality acceptable (style, documentation, edge cases)?
+- Are there any security or performance issues?
+
+### 5. Complete Example Workflow
+
+```text
+User: "Build a user authentication system"
+
+Orchestrator:
+1. Runs: opencode-orc -models
+2. Presents model list to user
+3. User selects: deepseek/deepseek-chat
+
+4. Delegates:
+   opencode-orc -model deepseek/deepseek-chat "Build a user authentication system with login, registration, and JWT token refresh. Use Go and PostgreSQL."
+
+5. Captures session ID: ses_auth_001
+
+6. Sub-agent completes. Orchestrator reviews output.
+
+7. Finds missing: password hashing is not implemented.
+
+8. Iterates:
+   opencode-orc -model deepseek/deepseek-chat -s ses_auth_001 "Add bcrypt password hashing with configurable cost factor. Also add rate limiting for login attempts."
+
+9. Reviews again. Accepts. Reports to user.
+```
+
 ## Prerequisites Check
 
 Before using opencode-orc, verify:
