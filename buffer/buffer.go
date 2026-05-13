@@ -1,7 +1,7 @@
 package buffer
 
 import (
-	"opencode-orc/types"
+	"github.com/real-uangi/opencode-orc/types"
 )
 
 // Buffer manages state for generating the done event

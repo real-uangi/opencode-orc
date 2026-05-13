@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/real-uangi/opencode-orc/types"
 	"gopkg.in/yaml.v3"
-	"opencode-orc/types"
 )
 
 // DefaultConfigPath returns the default config file path
@@ -48,7 +48,7 @@ func DefaultConfig() *types.Config {
 			},
 		},
 		Output: types.OutputConfig{
-			Format: "jsonl",
+			Format: "text",
 			Pretty: false,
 		},
 	}

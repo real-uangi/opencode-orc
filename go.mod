@@ -1,4 +1,4 @@
-module opencode-orc
+module github.com/real-uangi/opencode-orc
 
 go 1.26
 

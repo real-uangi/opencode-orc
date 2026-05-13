@@ -5,24 +5,51 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/real-uangi/opencode-orc/types"
 )
 
 // Writer handles output formatting and writing
 type Writer struct {
 	writer io.Writer
+	format string
 	pretty bool
 }
 
 // New creates a new output writer
-func New(w io.Writer, pretty bool) *Writer {
+// format: "jsonl" or "text"
+func New(w io.Writer, format string, pretty bool) *Writer {
 	return &Writer{
 		writer: w,
+		format: format,
 		pretty: pretty,
 	}
 }
 
-// WriteEvent writes an event as JSONL
+// WriteEvent writes an event in the configured format
 func (w *Writer) WriteEvent(event interface{}) error {
+	if w.format == "text" {
+		return w.writeText(event)
+	}
+	return w.writeJSON(event)
+}
+
+func (w *Writer) writeText(event interface{}) error {
+	var line string
+	if f, ok := event.(types.Formatter); ok {
+		line = f.FormatText()
+	} else {
+		line = fmt.Sprintf("%v", event)
+	}
+
+	_, err := w.writer.Write([]byte(line + "\n"))
+	if err != nil {
+		return fmt.Errorf("failed to write event: %w", err)
+	}
+	return nil
+}
+
+func (w *Writer) writeJSON(event interface{}) error {
 	var data []byte
 	var err error
 

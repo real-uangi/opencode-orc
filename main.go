@@ -6,12 +6,12 @@ import (
 	"io"
 	"os"
 
-	"opencode-orc/buffer"
-	"opencode-orc/config"
-	"opencode-orc/filter"
-	"opencode-orc/output"
-	"opencode-orc/parser"
-	"opencode-orc/process"
+	"github.com/real-uangi/opencode-orc/buffer"
+	"github.com/real-uangi/opencode-orc/config"
+	"github.com/real-uangi/opencode-orc/filter"
+	"github.com/real-uangi/opencode-orc/output"
+	"github.com/real-uangi/opencode-orc/parser"
+	"github.com/real-uangi/opencode-orc/process"
 )
 
 func main() {
@@ -58,7 +58,7 @@ func main() {
 	p := parser.NewParser(proc.Stdout())
 	f := filter.New(cfg)
 	b := buffer.New()
-	w := output.New(os.Stdout, cfg.Output.Pretty)
+	w := output.New(os.Stdout, cfg.Output.Format, cfg.Output.Pretty)
 
 	for {
 		event, err := p.ParseNext()

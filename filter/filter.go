@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"opencode-orc/types"
+	"github.com/real-uangi/opencode-orc/types"
 )
 
 // Filter processes events according to configuration
@@ -58,7 +58,7 @@ func (f *Filter) isIncluded(eventType string) bool {
 
 func (f *Filter) filterStepStart(event *types.RawEvent) []interface{} {
 	f.sessionID = event.SessionID
-	
+
 	// Only emit session event once
 	if !f.emitted {
 		f.emitted = true

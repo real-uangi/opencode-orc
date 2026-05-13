@@ -28,5 +28,5 @@ events:
         - error.name
         - error.data.message
 output:
-  format: jsonl
+  format: text
   pretty: false

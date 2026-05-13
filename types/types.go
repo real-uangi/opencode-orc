@@ -1,5 +1,7 @@
 package types
 
+import "fmt"
+
 // Event types from opencode JSONL output
 const (
 	EventTypeStepStart  = "step_start"
@@ -28,10 +30,19 @@ type RawEvent struct {
 	Error     map[string]interface{} `json:"error,omitempty"`
 }
 
+// Formatter can format itself as text
+type Formatter interface {
+	FormatText() string
+}
+
 // SessionEvent represents a session info event
 type SessionEvent struct {
 	Type      string `json:"type"`
 	SessionID string `json:"sessionId"`
+}
+
+func (e *SessionEvent) FormatText() string {
+	return "[session] " + e.SessionID
 }
 
 // ToolEvent represents a tool use event
@@ -44,16 +55,31 @@ type ToolEvent struct {
 	Error  string `json:"error,omitempty"`
 }
 
+func (e *ToolEvent) FormatText() string {
+	if e.Error != "" {
+		return "[error] " + e.Action + ": " + e.Error
+	}
+	return "[" + e.Status + "] " + e.Action
+}
+
 // TextEvent represents a text output event
 type TextEvent struct {
 	Type string `json:"type"`
 	Text string `json:"text"`
 }
 
+func (e *TextEvent) FormatText() string {
+	return e.Text
+}
+
 // StepEvent represents a step finish event
 type StepEvent struct {
 	Type   string `json:"type"`
 	Reason string `json:"reason"`
+}
+
+func (e *StepEvent) FormatText() string {
+	return "[step] " + e.Reason
 }
 
 // ToolsEvent represents a summary of tool calls in a step
@@ -63,12 +89,27 @@ type ToolsEvent struct {
 	Summary string `json:"summary"`
 }
 
+func (e *ToolsEvent) FormatText() string {
+	return fmt.Sprintf("[tools] %d calls: %s", e.Count, e.Summary)
+}
+
 // DoneEvent represents the final done event
 type DoneEvent struct {
 	Type      string `json:"type"`
 	SessionID string `json:"sessionId"`
 	Ok        bool   `json:"ok"`
 	Error     string `json:"error,omitempty"`
+}
+
+func (e *DoneEvent) FormatText() string {
+	status := "ok=true"
+	if !e.Ok {
+		status = "ok=false"
+	}
+	if e.Error != "" {
+		status += " error=" + e.Error
+	}
+	return fmt.Sprintf("[done] %s session=%s", status, e.SessionID)
 }
 
 // Config represents the application configuration

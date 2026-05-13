@@ -7,7 +7,7 @@ import (
 	"log"
 	"strings"
 
-	"opencode-orc/types"
+	"github.com/real-uangi/opencode-orc/types"
 )
 
 // Parser reads JSONL input and emits parsed events

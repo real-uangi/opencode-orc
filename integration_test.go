@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"opencode-orc/buffer"
-	"opencode-orc/config"
-	"opencode-orc/filter"
-	"opencode-orc/output"
-	"opencode-orc/parser"
-	"opencode-orc/types"
+	"github.com/real-uangi/opencode-orc/buffer"
+	"github.com/real-uangi/opencode-orc/config"
+	"github.com/real-uangi/opencode-orc/filter"
+	"github.com/real-uangi/opencode-orc/output"
+	"github.com/real-uangi/opencode-orc/parser"
+	"github.com/real-uangi/opencode-orc/types"
 )
 
 func TestIntegration_FilterEvents(t *testing.T) {
@@ -32,7 +32,7 @@ func TestIntegration_FilterEvents(t *testing.T) {
 	b := buffer.New()
 
 	var outputBuf bytes.Buffer
-	w := output.New(&outputBuf, false)
+	w := output.New(&outputBuf, "jsonl", false)
 
 	// Process events
 	for {

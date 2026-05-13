@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"opencode-orc/types"
+	"github.com/real-uangi/opencode-orc/types"
 )
 
 func TestWriteEvent_CompactJSON(t *testing.T) {
 	var buf bytes.Buffer
-	writer := New(&buf, false)
+	writer := New(&buf, "jsonl", false)
 
 	event := types.SessionEvent{
 		Type:      types.OutputTypeSession,
@@ -42,7 +42,7 @@ func TestWriteEvent_CompactJSON(t *testing.T) {
 
 func TestWriteEvent_PrettyJSON(t *testing.T) {
 	var buf bytes.Buffer
-	writer := New(&buf, true)
+	writer := New(&buf, "jsonl", true)
 
 	event := types.DoneEvent{
 		Type:      types.OutputTypeDone,
@@ -78,7 +78,7 @@ func TestWriteEvent_PrettyJSON(t *testing.T) {
 
 func TestWriteEvent_MultipleEvents(t *testing.T) {
 	var buf bytes.Buffer
-	writer := New(&buf, false)
+	writer := New(&buf, "jsonl", false)
 
 	events := []interface{}{
 		types.TextEvent{Type: types.OutputTypeText, Text: "hello"},
@@ -108,7 +108,7 @@ func TestWriteEvent_MultipleEvents(t *testing.T) {
 
 func TestWriteEvent_ToolsEvent(t *testing.T) {
 	var buf bytes.Buffer
-	writer := New(&buf, false)
+	writer := New(&buf, "jsonl", false)
 
 	event := types.ToolsEvent{
 		Type:    types.OutputTypeTools,
@@ -144,7 +144,7 @@ func TestWriteEvent_ToolsEvent(t *testing.T) {
 
 func TestWriteEvent_StepEvent(t *testing.T) {
 	var buf bytes.Buffer
-	writer := New(&buf, false)
+	writer := New(&buf, "jsonl", false)
 
 	event := types.StepEvent{
 		Type:   types.OutputTypeStep,
@@ -171,7 +171,7 @@ func TestWriteEvent_StepEvent(t *testing.T) {
 
 func TestWriteEvent_NilEvent(t *testing.T) {
 	var buf bytes.Buffer
-	writer := New(&buf, false)
+	writer := New(&buf, "jsonl", false)
 
 	err := writer.WriteEvent(nil)
 	if err != nil {
@@ -186,7 +186,7 @@ func TestWriteEvent_NilEvent(t *testing.T) {
 
 func TestWriteEvent_EmptyStruct(t *testing.T) {
 	var buf bytes.Buffer
-	writer := New(&buf, false)
+	writer := New(&buf, "jsonl", false)
 
 	type Empty struct{}
 	err := writer.WriteEvent(Empty{})
@@ -197,5 +197,77 @@ func TestWriteEvent_EmptyStruct(t *testing.T) {
 	output := strings.TrimSpace(buf.String())
 	if output != "{}" {
 		t.Errorf("expected '{}', got '%s'", output)
+	}
+}
+
+func TestWriteEvent_TextFormat(t *testing.T) {
+	var buf bytes.Buffer
+	writer := New(&buf, "text", false)
+
+	events := []interface{}{
+		&types.SessionEvent{Type: "session", SessionID: "ses_abc"},
+		&types.TextEvent{Type: "text", Text: "hello world"},
+		&types.ToolsEvent{Type: "tools", Count: 2, Summary: "read main.go, bash go build"},
+		&types.StepEvent{Type: "step", Reason: "end_turn"},
+		&types.DoneEvent{Type: "done", SessionID: "ses_abc", Ok: true},
+	}
+
+	for _, event := range events {
+		err := writer.WriteEvent(event)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	}
+
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	if len(lines) != 5 {
+		t.Fatalf("expected 5 lines, got %d: %v", len(lines), lines)
+	}
+
+	expected := []string{
+		"[session] ses_abc",
+		"hello world",
+		"[tools] 2 calls: read main.go, bash go build",
+		"[step] end_turn",
+		"[done] ok=true session=ses_abc",
+	}
+
+	for i, exp := range expected {
+		if lines[i] != exp {
+			t.Errorf("line %d: expected '%s', got '%s'", i, exp, lines[i])
+		}
+	}
+}
+
+func TestWriteEvent_TextFormat_Error(t *testing.T) {
+	var buf bytes.Buffer
+	writer := New(&buf, "text", false)
+
+	events := []interface{}{
+		&types.ToolEvent{Type: "error", Tool: "error", Status: "error", Action: "ProcessError", Error: "exit status 1"},
+		&types.DoneEvent{Type: "done", SessionID: "ses_abc", Ok: false, Error: "exit status 1"},
+	}
+
+	for _, event := range events {
+		err := writer.WriteEvent(event)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	}
+
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	if len(lines) != 2 {
+		t.Fatalf("expected 2 lines, got %d: %v", len(lines), lines)
+	}
+
+	expected := []string{
+		"[error] ProcessError: exit status 1",
+		"[done] ok=false error=exit status 1 session=ses_abc",
+	}
+
+	for i, exp := range expected {
+		if lines[i] != exp {
+			t.Errorf("line %d: expected '%s', got '%s'", i, exp, lines[i])
+		}
 	}
 }
