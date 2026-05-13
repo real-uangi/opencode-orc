@@ -70,16 +70,18 @@ func main() {
 			continue
 		}
 
-		filtered := f.Filter(event)
-		if filtered == nil {
+		events := f.Filter(event)
+		if len(events) == 0 {
 			continue
 		}
 
-		b.Update(filtered)
+		for _, filtered := range events {
+			b.Update(filtered)
 
-		if err := w.WriteEvent(filtered); err != nil {
-			output.WriteError("failed to write event: %v", err)
-			os.Exit(3)
+			if err := w.WriteEvent(filtered); err != nil {
+				output.WriteError("failed to write event: %v", err)
+				os.Exit(3)
+			}
 		}
 	}
 

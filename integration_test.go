@@ -15,11 +15,14 @@ import (
 )
 
 func TestIntegration_FilterEvents(t *testing.T) {
-	// Sample JSONL input
+	// Sample JSONL input with tool calls
 	input := `{"type":"step_start","timestamp":1759406013703,"sessionID":"ses_xxx","part":{"id":"prt_1","type":"step-start"}}
-{"type":"text","timestamp":1759406015783,"sessionID":"ses_xxx","part":{"id":"prt_2","type":"text","text":"hello world"}}
 {"type":"tool_use","timestamp":1759406018000,"sessionID":"ses_xxx","part":{"type":"tool","tool":"read","state":{"status":"completed","input":{"file":"README.md"}}}}
-{"type":"step_finish","timestamp":1759406019999,"sessionID":"ses_xxx","part":{"id":"prt_3","type":"step-finish","reason":"stop"}}
+{"type":"tool_use","timestamp":1759406018500,"sessionID":"ses_xxx","part":{"type":"tool","tool":"read","state":{"status":"completed","input":{"file":"go.mod"}}}}
+{"type":"step_finish","timestamp":1759406019000,"sessionID":"ses_xxx","part":{"id":"prt_2","type":"step-finish","reason":"tool-calls"}}
+{"type":"step_start","timestamp":1759406020000,"sessionID":"ses_xxx","part":{"id":"prt_3","type":"step-start"}}
+{"type":"text","timestamp":1759406021000,"sessionID":"ses_xxx","part":{"id":"prt_4","type":"text","text":"hello world"}}
+{"type":"step_finish","timestamp":1759406022000,"sessionID":"ses_xxx","part":{"id":"prt_5","type":"step-finish","reason":"stop"}}
 `
 
 	// Setup
@@ -38,13 +41,11 @@ func TestIntegration_FilterEvents(t *testing.T) {
 			break
 		}
 
-		filtered := f.Filter(event)
-		if filtered == nil {
-			continue
+		events := f.Filter(event)
+		for _, filtered := range events {
+			b.Update(filtered)
+			w.WriteEvent(filtered)
 		}
-
-		b.Update(filtered)
-		w.WriteEvent(filtered)
 	}
 
 	// Write done event
@@ -54,7 +55,7 @@ func TestIntegration_FilterEvents(t *testing.T) {
 	// Verify output
 	lines := strings.Split(strings.TrimSpace(outputBuf.String()), "\n")
 	if len(lines) != 5 {
-		t.Fatalf("expected 5 output lines, got %d", len(lines))
+		t.Fatalf("expected 5 output lines, got %d: %v", len(lines), lines)
 	}
 
 	// Verify session event
@@ -67,24 +68,27 @@ func TestIntegration_FilterEvents(t *testing.T) {
 		t.Errorf("expected sessionId ses_xxx, got %s", sessionEvent.SessionID)
 	}
 
+	// Verify tools summary event
+	var toolsEvent types.ToolsEvent
+	json.Unmarshal([]byte(lines[1]), &toolsEvent)
+	if toolsEvent.Type != "tools" {
+		t.Errorf("expected type tools, got %s", toolsEvent.Type)
+	}
+	if toolsEvent.Count != 2 {
+		t.Errorf("expected count 2, got %d", toolsEvent.Count)
+	}
+	if toolsEvent.Summary != "read README.md, read go.mod" {
+		t.Errorf("expected summary 'read README.md, read go.mod', got %s", toolsEvent.Summary)
+	}
+
 	// Verify text event
 	var textEvent types.TextEvent
-	json.Unmarshal([]byte(lines[1]), &textEvent)
+	json.Unmarshal([]byte(lines[2]), &textEvent)
 	if textEvent.Type != "text" {
 		t.Errorf("expected type text, got %s", textEvent.Type)
 	}
 	if textEvent.Text != "hello world" {
 		t.Errorf("expected text 'hello world', got %s", textEvent.Text)
-	}
-
-	// Verify tool event
-	var toolEvent types.ToolEvent
-	json.Unmarshal([]byte(lines[2]), &toolEvent)
-	if toolEvent.Type != "tool" {
-		t.Errorf("expected type tool, got %s", toolEvent.Type)
-	}
-	if toolEvent.Tool != "read" {
-		t.Errorf("expected tool read, got %s", toolEvent.Tool)
 	}
 
 	// Verify step event

@@ -2,25 +2,30 @@ package filter
 
 import (
 	"fmt"
+	"strings"
 
 	"opencode-orc/types"
 )
 
 // Filter processes events according to configuration
 type Filter struct {
-	config *types.Config
+	config    *types.Config
+	toolCalls []string // Buffer for tool call summaries in current step
+	sessionID string   // Current session ID
+	emitted   bool     // Whether session event has been emitted
 }
 
 // New creates a new event filter
 func New(config *types.Config) *Filter {
 	return &Filter{
-		config: config,
+		config:    config,
+		toolCalls: make([]string, 0),
 	}
 }
 
-// Filter processes a raw event and returns a filtered output event
-// Returns nil if the event should be skipped
-func (f *Filter) Filter(event *types.RawEvent) interface{} {
+// Filter processes a raw event and returns filtered output events
+// Returns empty slice if the event should be skipped
+func (f *Filter) Filter(event *types.RawEvent) []interface{} {
 	// Check if event type is included
 	if !f.isIncluded(event.Type) {
 		return nil
@@ -51,14 +56,23 @@ func (f *Filter) isIncluded(eventType string) bool {
 	return false
 }
 
-func (f *Filter) filterStepStart(event *types.RawEvent) *types.SessionEvent {
-	return &types.SessionEvent{
-		Type:      types.OutputTypeSession,
-		SessionID: event.SessionID,
+func (f *Filter) filterStepStart(event *types.RawEvent) []interface{} {
+	f.sessionID = event.SessionID
+	
+	// Only emit session event once
+	if !f.emitted {
+		f.emitted = true
+		return []interface{}{
+			&types.SessionEvent{
+				Type:      types.OutputTypeSession,
+				SessionID: event.SessionID,
+			},
+		}
 	}
+	return nil
 }
 
-func (f *Filter) filterToolUse(event *types.RawEvent) *types.ToolEvent {
+func (f *Filter) filterToolUse(event *types.RawEvent) []interface{} {
 	part, ok := event.Part["part"].(map[string]interface{})
 	if !ok {
 		part = event.Part
@@ -66,40 +80,13 @@ func (f *Filter) filterToolUse(event *types.RawEvent) *types.ToolEvent {
 
 	tool := getStringFromMap(part, "tool")
 	state, _ := part["state"].(map[string]interface{})
-	status := getStringFromMap(state, "status")
 
-	// Build action summary
+	// Build action summary and add to buffer
 	action := f.buildToolAction(tool, state)
+	f.toolCalls = append(f.toolCalls, action)
 
-	// Get exit code for bash commands
-	var exit *int
-	if tool == "bash" {
-		if metadata, ok := state["metadata"].(map[string]interface{}); ok {
-			if exitVal, ok := metadata["exit"]; ok {
-				if exitInt, ok := exitVal.(int); ok {
-					exit = &exitInt
-				} else if exitFloat, ok := exitVal.(float64); ok {
-					exitInt := int(exitFloat)
-					exit = &exitInt
-				}
-			}
-		}
-	}
-
-	// Get error
-	errMsg := ""
-	if status == "error" {
-		errMsg = getStringFromMap(state, "error")
-	}
-
-	return &types.ToolEvent{
-		Type:   types.OutputTypeTool,
-		Tool:   tool,
-		Status: status,
-		Action: action,
-		Exit:   exit,
-		Error:  errMsg,
-	}
+	// Don't output individual tool events
+	return nil
 }
 
 func (f *Filter) buildToolAction(tool string, state map[string]interface{}) string {
@@ -130,33 +117,55 @@ func (f *Filter) buildToolAction(tool string, state map[string]interface{}) stri
 	return tool
 }
 
-func (f *Filter) filterText(event *types.RawEvent) *types.TextEvent {
+func (f *Filter) filterText(event *types.RawEvent) []interface{} {
 	part, ok := event.Part["part"].(map[string]interface{})
 	if !ok {
 		part = event.Part
 	}
 
 	text := getStringFromMap(part, "text")
-	return &types.TextEvent{
-		Type: types.OutputTypeText,
-		Text: text,
+	return []interface{}{
+		&types.TextEvent{
+			Type: types.OutputTypeText,
+			Text: text,
+		},
 	}
 }
 
-func (f *Filter) filterStepFinish(event *types.RawEvent) *types.StepEvent {
+func (f *Filter) filterStepFinish(event *types.RawEvent) []interface{} {
 	part, ok := event.Part["part"].(map[string]interface{})
 	if !ok {
 		part = event.Part
 	}
 
 	reason := getStringFromMap(part, "reason")
-	return &types.StepEvent{
-		Type:   types.OutputTypeStep,
-		Reason: reason,
+
+	// If there are buffered tool calls, output a summary
+	if len(f.toolCalls) > 0 {
+		summary := strings.Join(f.toolCalls, ", ")
+		toolsEvent := &types.ToolsEvent{
+			Type:    types.OutputTypeTools,
+			Count:   len(f.toolCalls),
+			Summary: summary,
+		}
+		f.toolCalls = make([]string, 0) // Clear buffer
+		return []interface{}{toolsEvent}
 	}
+
+	// Only output step event if it's not a tool-calls step
+	if reason != "tool-calls" {
+		return []interface{}{
+			&types.StepEvent{
+				Type:   types.OutputTypeStep,
+				Reason: reason,
+			},
+		}
+	}
+
+	return nil
 }
 
-func (f *Filter) filterError(event *types.RawEvent) *types.ToolEvent {
+func (f *Filter) filterError(event *types.RawEvent) []interface{} {
 	errData, ok := event.Error["error"].(map[string]interface{})
 	if !ok {
 		errData = event.Error
@@ -166,12 +175,14 @@ func (f *Filter) filterError(event *types.RawEvent) *types.ToolEvent {
 	data, _ := errData["data"].(map[string]interface{})
 	message := getStringFromMap(data, "message")
 
-	return &types.ToolEvent{
-		Type:   types.OutputTypeTool,
-		Tool:   "error",
-		Status: "error",
-		Action: name,
-		Error:  message,
+	return []interface{}{
+		&types.ToolEvent{
+			Type:   "error",
+			Tool:   "error",
+			Status: "error",
+			Action: name,
+			Error:  message,
+		},
 	}
 }
 

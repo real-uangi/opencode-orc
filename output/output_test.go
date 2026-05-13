@@ -106,17 +106,14 @@ func TestWriteEvent_MultipleEvents(t *testing.T) {
 	}
 }
 
-func TestWriteEvent_ToolEvent(t *testing.T) {
+func TestWriteEvent_ToolsEvent(t *testing.T) {
 	var buf bytes.Buffer
 	writer := New(&buf, false)
 
-	exitCode := 0
-	event := types.ToolEvent{
-		Type:   types.OutputTypeTool,
-		Tool:   "bash",
-		Status: "completed",
-		Action: "ls -la",
-		Exit:   &exitCode,
+	event := types.ToolsEvent{
+		Type:    types.OutputTypeTools,
+		Count:   3,
+		Summary: "read README.md, ls -la, grep pattern",
 	}
 
 	err := writer.WriteEvent(event)
@@ -132,12 +129,16 @@ func TestWriteEvent_ToolEvent(t *testing.T) {
 		t.Fatalf("invalid JSON output: %v", err)
 	}
 
-	if parsed["tool"] != "bash" {
-		t.Errorf("expected tool 'bash', got %v", parsed["tool"])
+	if parsed["type"] != types.OutputTypeTools {
+		t.Errorf("expected type '%s', got %v", types.OutputTypeTools, parsed["type"])
 	}
 
-	if parsed["action"] != "ls -la" {
-		t.Errorf("expected action 'ls -la', got %v", parsed["action"])
+	if parsed["count"] != float64(3) {
+		t.Errorf("expected count 3, got %v", parsed["count"])
+	}
+
+	if parsed["summary"] != "read README.md, ls -la, grep pattern" {
+		t.Errorf("expected summary 'read README.md, ls -la, grep pattern', got %v", parsed["summary"])
 	}
 }
 

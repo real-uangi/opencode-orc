@@ -13,7 +13,7 @@ const (
 // Output event types
 const (
 	OutputTypeSession = "session"
-	OutputTypeTool    = "tool"
+	OutputTypeTools   = "tools"
 	OutputTypeText    = "text"
 	OutputTypeStep    = "step"
 	OutputTypeDone    = "done"
@@ -54,6 +54,13 @@ type TextEvent struct {
 type StepEvent struct {
 	Type   string `json:"type"`
 	Reason string `json:"reason"`
+}
+
+// ToolsEvent represents a summary of tool calls in a step
+type ToolsEvent struct {
+	Type    string `json:"type"`
+	Count   int    `json:"count"`
+	Summary string `json:"summary"`
 }
 
 // DoneEvent represents the final done event

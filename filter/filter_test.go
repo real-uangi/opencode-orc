@@ -24,19 +24,19 @@ func TestFilterStepStart(t *testing.T) {
 		Type:      types.EventTypeStepStart,
 		SessionID: "ses_123",
 		Part: map[string]interface{}{
-			"id":      "prt_1",
+			"id":        "prt_1",
 			"messageID": "msg_1",
 		},
 	}
 
-	result := filter.Filter(event)
-	if result == nil {
-		t.Fatal("expected result, got nil")
+	events := filter.Filter(event)
+	if len(events) == 0 {
+		t.Fatal("expected events, got empty slice")
 	}
 
-	sessionEvent, ok := result.(*types.SessionEvent)
+	sessionEvent, ok := events[0].(*types.SessionEvent)
 	if !ok {
-		t.Fatalf("expected SessionEvent, got %T", result)
+		t.Fatalf("expected SessionEvent, got %T", events[0])
 	}
 
 	if sessionEvent.SessionID != "ses_123" {
@@ -61,9 +61,9 @@ func TestFilterExcludedEventType(t *testing.T) {
 		},
 	}
 
-	result := filter.Filter(event)
-	if result != nil {
-		t.Errorf("expected nil for excluded event type, got %v", result)
+	events := filter.Filter(event)
+	if len(events) != 0 {
+		t.Errorf("expected empty slice for excluded event type, got %v", events)
 	}
 }
 
@@ -84,14 +84,14 @@ func TestFilterTextEvent(t *testing.T) {
 		},
 	}
 
-	result := filter.Filter(event)
-	if result == nil {
-		t.Fatal("expected result, got nil")
+	events := filter.Filter(event)
+	if len(events) == 0 {
+		t.Fatal("expected events, got empty slice")
 	}
 
-	textEvent, ok := result.(*types.TextEvent)
+	textEvent, ok := events[0].(*types.TextEvent)
 	if !ok {
-		t.Fatalf("expected TextEvent, got %T", result)
+		t.Fatalf("expected TextEvent, got %T", events[0])
 	}
 
 	if textEvent.Text != "hello world" {
@@ -116,14 +116,14 @@ func TestFilterStepFinishEvent(t *testing.T) {
 		},
 	}
 
-	result := filter.Filter(event)
-	if result == nil {
-		t.Fatal("expected result, got nil")
+	events := filter.Filter(event)
+	if len(events) == 0 {
+		t.Fatal("expected events, got empty slice")
 	}
 
-	stepEvent, ok := result.(*types.StepEvent)
+	stepEvent, ok := events[0].(*types.StepEvent)
 	if !ok {
-		t.Fatalf("expected StepEvent, got %T", result)
+		t.Fatalf("expected StepEvent, got %T", events[0])
 	}
 
 	if stepEvent.Reason != "end_turn" {
@@ -131,16 +131,17 @@ func TestFilterStepFinishEvent(t *testing.T) {
 	}
 }
 
-func TestFilterToolUseBash(t *testing.T) {
+func TestFilterToolUseBuffersAndSummarizes(t *testing.T) {
 	cfg := &types.Config{
 		Events: types.EventsConfig{
-			Include: []string{types.EventTypeToolUse},
+			Include: []string{types.EventTypeToolUse, types.EventTypeStepFinish},
 		},
 	}
 
 	filter := New(cfg)
 
-	event := &types.RawEvent{
+	// First tool call
+	event1 := &types.RawEvent{
 		Type:      types.EventTypeToolUse,
 		SessionID: "ses_123",
 		Part: map[string]interface{}{
@@ -151,34 +152,63 @@ func TestFilterToolUseBash(t *testing.T) {
 					"input": map[string]interface{}{
 						"command": "ls -la",
 					},
-					"metadata": map[string]interface{}{
-						"exit": 0,
+				},
+			},
+		},
+	}
+
+	events := filter.Filter(event1)
+	if len(events) != 0 {
+		t.Errorf("expected no output for tool_use, got %v", events)
+	}
+
+	// Second tool call
+	event2 := &types.RawEvent{
+		Type:      types.EventTypeToolUse,
+		SessionID: "ses_123",
+		Part: map[string]interface{}{
+			"part": map[string]interface{}{
+				"tool": "read",
+				"state": map[string]interface{}{
+					"status": "completed",
+					"input": map[string]interface{}{
+						"file": "README.md",
 					},
 				},
 			},
 		},
 	}
 
-	result := filter.Filter(event)
-	if result == nil {
-		t.Fatal("expected result, got nil")
+	events = filter.Filter(event2)
+	if len(events) != 0 {
+		t.Errorf("expected no output for tool_use, got %v", events)
 	}
 
-	toolEvent, ok := result.(*types.ToolEvent)
+	// Step finish should output tools summary
+	event3 := &types.RawEvent{
+		Type:      types.EventTypeStepFinish,
+		SessionID: "ses_123",
+		Part: map[string]interface{}{
+			"reason": "tool-calls",
+		},
+	}
+
+	events = filter.Filter(event3)
+	if len(events) == 0 {
+		t.Fatal("expected events, got empty slice")
+	}
+
+	toolsEvent, ok := events[0].(*types.ToolsEvent)
 	if !ok {
-		t.Fatalf("expected ToolEvent, got %T", result)
+		t.Fatalf("expected ToolsEvent, got %T", events[0])
 	}
 
-	if toolEvent.Tool != "bash" {
-		t.Errorf("expected tool 'bash', got %s", toolEvent.Tool)
+	if toolsEvent.Count != 2 {
+		t.Errorf("expected count 2, got %d", toolsEvent.Count)
 	}
 
-	if toolEvent.Action != "ls -la" {
-		t.Errorf("expected action 'ls -la', got %s", toolEvent.Action)
-	}
-
-	if toolEvent.Exit == nil || *toolEvent.Exit != 0 {
-		t.Errorf("expected exit code 0, got %v", toolEvent.Exit)
+	if toolsEvent.Summary != "ls -la, read README.md" {
+		t.Errorf("expected summary 'ls -la, read README.md', got %s", toolsEvent.Summary)
 	}
 }
 
@@ -204,14 +234,14 @@ func TestFilterErrorEvent(t *testing.T) {
 		},
 	}
 
-	result := filter.Filter(event)
-	if result == nil {
-		t.Fatal("expected result, got nil")
+	events := filter.Filter(event)
+	if len(events) == 0 {
+		t.Fatal("expected events, got empty slice")
 	}
 
-	toolEvent, ok := result.(*types.ToolEvent)
+	toolEvent, ok := events[0].(*types.ToolEvent)
 	if !ok {
-		t.Fatalf("expected ToolEvent, got %T", result)
+		t.Fatalf("expected ToolEvent, got %T", events[0])
 	}
 
 	if toolEvent.Tool != "error" {
