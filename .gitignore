@@ -1,0 +1,12 @@
+# Binary
+opencode-orc
+
+# IDE
+.idea/
+
+# Reference docs
+docs/
+opencode-json-format.md
+
+# OS
+.DS_Store
