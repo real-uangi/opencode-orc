@@ -1,0 +1,40 @@
+name: Common Env
+
+on:
+  workflow_call:
+    outputs:
+      app_name:
+        value: ${{ jobs.common.outputs.app_name }}
+      image_name:
+        value: ${{ jobs.common.outputs.image_name }}
+      image_tag:
+        value: ${{ jobs.common.outputs.image_tag }}
+
+jobs:
+  common:
+    runs-on: ubuntu-latest
+
+    outputs:
+      app_name: ${{ steps.vars.outputs.app_name }}
+      image_name: ${{ steps.vars.outputs.image_name }}
+      image_tag: ${{ steps.vars.outputs.image_tag }}
+
+    steps:
+      - name: Compute variables
+        id: vars
+        shell: bash
+        run: |
+          echo "app_name=$(echo '${{ github.event.repository.name }}' | tr '[:upper:]' '[:lower:]' | tr -d ' ')" >> $GITHUB_OUTPUT
+          echo "image_name=ghcr.io/${{ github.repository }}" >> $GITHUB_OUTPUT
+          echo "image_tag=v$(date -u +'%y%m%d').${GITHUB_RUN_NUMBER}" >> $GITHUB_OUTPUT
+
+      - name: Debug
+        run: |
+          echo "event=${{ github.event_name }}"
+          echo "branch=${{ github.ref_name }}"
+          echo "sha=${{ github.sha }}"
+          echo "wf_sha=${{ github.event.workflow_run.head_sha }}"
+          
+          echo "image_tag=${{ steps.vars.outputs.image_tag }}"
+          echo "app_name=${{ steps.vars.outputs.app_name }}"
+          echo "image_name=${{ steps.vars.outputs.image_name }}"

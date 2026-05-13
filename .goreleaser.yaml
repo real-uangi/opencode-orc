@@ -1,0 +1,36 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+version: 2
+
+project_name: edge-pilot
+
+builds:
+  - id: opencode-orc
+    main: .
+    binary: opencode-orc
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s
+      - -w
+
+archives:
+  - id: opencode-orc-binaries
+    ids:
+      - opencode-orc
+    name_template: "{{ .ProjectName }}_control-plane_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: checksums.txt
+
+release:
+  github:
+    owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
+    name: "{{ .Env.GITHUB_REPOSITORY_NAME }}"
+
+changelog:
+  use: github

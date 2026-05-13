@@ -1,0 +1,102 @@
+name: Build Image
+
+permissions:
+  contents: write
+  packages: write
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  common:
+    uses: ./.github/workflows/common.yml
+
+  create_tag:
+    runs-on: ubuntu-latest
+    needs:
+      - common
+    env:
+      IMAGE_TAG: ${{ needs.common.outputs.image_tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Create and push tag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git rev-parse "${{ env.IMAGE_TAG }}" >/dev/null 2>&1; then
+            echo "Tag ${{ env.IMAGE_TAG }} already exists"
+            exit 0
+          fi
+
+          git config user.name "auto-agent"
+          git config user.email "auto-agent@uangi.org"
+
+          git tag -a "${{ env.IMAGE_TAG }}" "${GITHUB_SHA}" -m "Release ${{ env.IMAGE_TAG }}"
+          git push origin "${{ env.IMAGE_TAG }}"
+
+  go_test:
+    needs:
+      - common
+      - create_tag
+    env:
+      IMAGE_TAG: ${{ needs.common.outputs.image_tag }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          check-latest: false
+          cache: true
+          token: ${{ github.token }}
+      - name: Go Tests
+        run: go test ./...
+
+  build-image:
+    needs:
+      - common
+      - create_tag
+      - go_test
+    runs-on: [ ubuntu-latest ]
+    env:
+      APP_NAME: ${{ needs.common.outputs.app_name }}
+      IMAGE_NAME: ${{ needs.common.outputs.image_name }}
+      IMAGE_TAG: ${{ needs.common.outputs.image_tag }}
+      DOCKER_CLI_EXPERIMENTAL: enabled
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+          check-latest: false
+          token: ${{ github.token }}
+      - name: Clean env
+        run: |
+          rm -f .env
+          touch .env
+      - name: Release multi-arch with GoReleaser
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean --skip=validate
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPOSITORY_NAME: ${{ github.event.repository.name }}
