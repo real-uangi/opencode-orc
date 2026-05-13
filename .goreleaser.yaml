@@ -25,6 +25,7 @@ archives:
   - id: opencode-orc-binaries
     ids:
       - opencode-orc
+    formats: ["zip", "tar.gz"]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
