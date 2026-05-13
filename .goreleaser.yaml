@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://goreleaser.com/static/schema.json
 version: 2
 
-project_name: edge-pilot
+project_name: opencode-orc
 
 builds:
   - id: opencode-orc
@@ -22,7 +22,7 @@ archives:
   - id: opencode-orc-binaries
     ids:
       - opencode-orc
-    name_template: "{{ .ProjectName }}_control-plane_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
 
 checksum:
   name_template: checksums.txt
