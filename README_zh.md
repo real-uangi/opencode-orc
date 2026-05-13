@@ -8,7 +8,7 @@
 
 opencode 支持绝大部分 AI 提供商，是最适合作为委派子 Agents 的桥接层。其他 AI CLI 工具可以将 opencode-orc 作为子进程调用，无需直接集成即可利用多提供商能力。
 
-opencode 输出冗长的 JSONL 事件。opencode-orc 将其压缩为人类可读的摘要，降低 token 消耗，提升调用方的可解析性：
+opencode 输出冗长的 JSONL 事件，被其他 AI Agent 解析时会消耗大量 token。opencode-orc 将其压缩为简洁的文本摘要，大幅节省 token 开销：
 
 ```
 [session] ses_abc123

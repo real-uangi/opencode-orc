@@ -8,7 +8,7 @@ A lightweight orchestrator for [opencode](https://github.com/anomalyco/opencode)
 
 opencode supports most AI providers, making it the ideal bridge layer for delegating sub-agents. Other AI CLI tools can call opencode-orc as a subprocess to leverage multi-provider capabilities without direct integration.
 
-opencode outputs verbose JSONL events. opencode-orc compresses them into human-readable summaries, reducing token consumption and improving parseability for calling agents:
+opencode outputs verbose JSONL events, consuming significant tokens when parsed by other AI agents. opencode-orc compresses them into concise text summaries, drastically reducing token usage:
 
 ```
 [session] ses_abc123
