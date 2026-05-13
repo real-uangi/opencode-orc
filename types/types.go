@@ -23,7 +23,7 @@ const (
 type RawEvent struct {
 	Type      string                 `json:"type"`
 	Timestamp int64                  `json:"timestamp"`
-	SessionID string                 `json:"sessionID"`
+	SessionID string                 `json:"sessionId"`
 	Part      map[string]interface{} `json:"part,omitempty"`
 	Error     map[string]interface{} `json:"error,omitempty"`
 }
