@@ -32,7 +32,7 @@ go install github.com/real-uangi/opencode-orc@latest
 
 懒得看文档？把这句话发给你的 AI 助手：
 
-> 「请阅读 https://github.com/real-uangi/opencode-orc/blob/main/AGENTS.md 并按照其中的要求完成配置。」
+> 「请阅读 https://github.com/real-uangi/opencode-orc/blob/main/AGENTS.md 并按照其中的要求完成配置。请务必创建一个 Skill，这样我就能通过 opencode-orc 委派任务给子 Agent。」
 
 你的 AI 会自动完成安装、配置和 Skill 创建。
 

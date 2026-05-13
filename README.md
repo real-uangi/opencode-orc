@@ -32,7 +32,7 @@ Or download from [Releases](https://github.com/real-uangi/opencode-orc/releases)
 
 Too lazy to read the manual? Copy and paste this to your AI assistant:
 
-> "Please read https://github.com/real-uangi/opencode-orc/blob/main/AGENTS.md and set up opencode-orc for me according to that guide."
+> "Please read https://github.com/real-uangi/opencode-orc/blob/main/AGENTS.md and set up opencode-orc for me according to that guide. Make sure to create a skill for your framework so I can delegate tasks to sub-agents through opencode-orc."
 
 Your AI will handle installation, configuration, and skill creation automatically.
 
